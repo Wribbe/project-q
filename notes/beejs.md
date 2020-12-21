@@ -250,3 +250,45 @@ IPv6 have private networks to -> starts with `fdXX` (see RFC 4193).
 1. `getaddrinfo` instead of `gethostbyname`
 1. `getnameinfo` instead of `gethostbyaddr`
 1. Use IPv6 multicast instead of `INADDR_BROADCAST`, no longer works.
+
+
+# System Call or Bust
+
+Examples don't include error-checking for brevity, check the standalone
+versions for more complete examples.
+
+
+## getaddrinfo() -- Prepare to launch!
+```
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+int
+getaddrinfo(
+  const char * node,              // "www.example.com" or IP.
+  const char * service,           // "http" or port-number.
+  const struct addrifno * hints,
+  struct addrinfo ** res
+);
+```
+
+Sample call for preparing to listen on host-ip on port 3490:
+```
+int status;
+struct addrinfo hints;
+struct addrinfo * servinfo; // Will contain the results.
+
+memset(&hints, 0, sizeof hints);  // Zero-out struct.
+hints.ai_family = AF_UNSPEC;      // IPv6 or IPv4.
+hints.ai_socktype = SOCK_STREAM;  // TCP stream socket.
+hints.ai_flags = AI_PASSIVE;      // Auto-fill IP.
+
+if ((status = getaddrinfo(NULL, "3490", &hints, &servinfo)) != 0) {
+  fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+  exit(1);
+}
+
+// servinfo now points to a linked list of 1 or more addrinfo structs.
+
+```

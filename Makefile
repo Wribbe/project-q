@@ -14,5 +14,5 @@ all:  ${BINDIRS} ${BINS}
 ${DIR_BIN}/% : ${DIR_SRC}/%.c
 	gcc $^ -o $@ -g -Wall --pedantic
 
-${DIR_BIN}/%:
+${BINDIRS}:
 	mkdir -p $@
