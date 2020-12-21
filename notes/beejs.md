@@ -178,3 +178,75 @@ struct sockaddr_storage {
 This is useful when the family is not known, this struct can be passed along
 instead of `struct sockaddr_in` or `struct sockaddr_in6` and then the
 `ss_family` field can be read and the structure cast into the correct variant.
+
+
+## IP Addresses II
+
+No need for packing here either, `inet_pton(int af, const char * src, void *
+dst)`, (_presentation to network_) takes the address family and a
+string-representation of an IPv4 or IPv6 address and copies the network address
+structure to `dst`.
+```
+struct sockaddr_in sa; // IPv4.
+struct sockaddr_in6 sa6; // IPv6.
+
+// This method returns -1 on error and 0 if address was messed up.
+inet_pton(AF_INET, "10.12.110.57", &(sa.sin_addr)); // IPv4.
+inet_pton(AF_INET6, "2001:db8:63b3:1::3490", &(sa6.sin6_addr)); // IPv6.
+```
+__Note:__ `inet_addr()` and `inet_aton()` has been deprecated in favor of the
+methods detailed above.
+
+The inverse of `inet_pton` is `inet_ntop` (network to presentation):
+```
+// IPv4.
+char ip4[INET_ADDRSTRLEN]; // Space for IPv4 address.
+struct socaddr_in sa; // Pretending this is loaded with something.
+inet_ntop(AF_INET, &(sa.sin_addr), p4, INET_ADDRSTRLEN);
+printf("The IPv4 address is: %s\n", ip4);
+
+// IPv6.
+char ip6[INET6_ADDRSTRLEN];
+struct sockaddr_in6 sa6;
+inet_ntop(AF_INET6, , &(sa6.sin6_addr), ip6, INET6_ADDRSTRLEN);
+print("The address is: %s\n", ip6);
+```
+
+These don't work for hostname lookups, only for ip-addresses, for the former
+use `getaddrinfo()`.
+
+__Note:__ `inet_nto()` deprecated in favor for above.
+
+
+## Private (Or Disconnected) Networks
+
+_internal IP -> external IP_ is handled by __NAT__ (_Network Address
+Translation_)
+
+IPv6 have private networks to -> starts with `fdXX` (see RFC 4193).
+
+
+# Jumping from IPv4 to IPv6
+
+1. Use `getaddrinfo(const char * node, const char * service, const stsruct
+   addrinfo * hints, struct addrinfo ** res)` to get all the `struct sockaddr`
+   information -> will keep things IP-version-agnostic.
+1. Use helper function instead of hard-coding.
+1. `AF_INET -> AF_INET6`
+1. `PF_INET -> PF_INET6`
+1. `INADDR_ANY` assign -> `in6addr_any` assign
+   ```
+   struct sockaddr_in sa;
+   struct sockaddr_in6 sa6;
+   sa.sin_addr.s_addr = INADDR_ANY; // Use IPv4.
+   sa6.sin6_addr = in6addr_any; // Use IPv6.
+   ```
+   `struct in6_addr` can also be initialized with the value IN6ADDR_ANY_INIT
+   `struct in6_addr ia6 = IN6ADDR_ANY_INIT;`
+1. `struct sockaddr_in` -> `struct socaddr_in6` _Note:_ no `sin6_zero` field.
+1. `struct in_addr` -> `struct in6_addr`
+1. `inet_pton` instead of `inet_aton` and `inet_addr`
+1. `inet_ntop` instead of `inet_ntop`
+1. `getaddrinfo` instead of `gethostbyname`
+1. `getnameinfo` instead of `gethostbyaddr`
+1. Use IPv6 multicast instead of `INADDR_BROADCAST`, no longer works.
