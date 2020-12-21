@@ -292,3 +292,172 @@ if ((status = getaddrinfo(NULL, "3490", &hints, &servinfo)) != 0) {
 // servinfo now points to a linked list of 1 or more addrinfo structs.
 
 ```
+
+## socket() -- Get the File Descriptor!
+
+Breakdown of the `socket()` systemcall:
+```
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int socket(
+  int domain,   // PF_INET | PF_INET6.
+  int type,     // SOCK_STREAM | SOCK_DGRAM.
+  int protocol  // Set to 0 in order to choose proper protocol for type.
+);
+```
+Can be populated manually, but easier to call `getprotobyname()` together with
+either 'tcp' or 'udp' respectively. Should use `AF_INET` with `struct
+sockaddr_in` and `PF_INET` with `socket()` but they have the same value.
+
+
+## Bind() -- What port am I on?
+
+Given a socket, you might want to associate it with a port on the running host
+by using `bind()`. If you are a server, this is done in combination with
+`listen()` in order to check for incoming connections.
+```
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int bind(
+  int sockfd,               // The socket file-descriptor from socket().
+  struct sockaddr * my_add, // Info abt. address, port, IP address.
+  int addrlen               // Length of bytes of the address.
+);
+```
+Example binds socket to the host port 3490:
+```
+struct addrinfo hints = {
+  .ai_family = AF_UNSPEC,     // Don't care about IPv4/IPv6.
+  .ai_socktype = SOCK_STREAM,
+  .ai_flags = AI_PASSIVE      // Auto fill IP.
+};
+
+struct addrinfo * res = NULL;
+getaddrinfo(NULL, "3490", &hints, &res);
+
+// Make the socket.
+int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+
+// Bind it to the port.
+bind(sockfd, res->ai_addr, res->ai_addrlen);
+```
+`bind()` returns `-1` on error and sets `errno`. Possible ports between
+`1024-65535` barring any used ports.
+
+Set socket options in order to allowing reuse of a socket:
+```
+int yes=1;
+int result = setsockopt(
+  listener,
+  SOL_SOCKET,
+  SO_REUSEADDR,
+  &yes,
+  sizeof yes
+);
+if (result == -1) {
+  perror("setsockopt");
+  exit(1);
+}
+```
+
+
+## connect() -- Hey, you!
+
+The `connect()` systemcall is used connect a socket to a specific address and
+port.
+```
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int connect(
+  int sockfd,                  // File-desc, retuned from socket()
+  struct sockaddr * serv_addr, // IP-addr + dest port.
+  int addrlen                  // Byte-length of address.
+);
+```
+All of the above can be gathered with `getaddrinfo()`.
+
+Example of connecting to `http://www.example.com:3490`:
+```
+struct addrinfo hints = {
+  .ai_family = AF_UNSPEC,
+  .ai_socktype = SOCK_STREAM,
+};
+struct addrinfo * res = NULL;
+
+getaddrinfo("www.example.com", "3490", &hints, &res);
+int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+connect(sockfd, res->ai_addr, res->ai_addrlen);
+```
+No need to call bind, since we only care about the outbound port since we're
+not actively listning for connections.
+
+
+## listen() -- Will somebody please call me?
+
+You need to `listen()` and `accept()` in order to handle incoming connections.
+```
+int listen(
+  int sockfd,   // Socket-descriptor returned from socket().
+  int backlog   // Size of allowed queued connections.
+);
+```
+`bind()` needs to be called before `listen()` in order to distinguish which
+port should be re-directed to our software.
+
+
+## accept() -- "Thank you for calling port 3490."
+
+After calling `accept()` on an incoming connection, a new socket is created
+representing this specific connection, with the original listening socket still
+remaining.
+```
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int accept(
+  int sockfd,            // Descriptor from listen().
+  struct socaddr * addr, // Usually points to local sockaddr_storage.
+  socklen_t * addrlen    // Usually sizeof sockaddr_storage.
+);
+```
+The function will at most write `addrlen` number of bytes to addr, if less is
+written, the function fill set a new adjusted `addrlen` value.
+
+```
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#incude <netdb.h>
+
+#define MYPORT "3490"
+#define BACKLOG 10
+
+int
+main(void)
+{
+  struct addrinfo hints = {
+    .ai_family = AF_UNSPEC, // IPv4 or IPv6.
+    .ai_socktype = SOCK_STREAM, // TCP.
+    .ai_flags ` AI_PASSIVE // Auto-fill IP.
+  };
+
+  struct addrinfo * res = NULL;
+  getaddrinfo(NULL, MYPORT, &hints, &res);
+  int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  bind(sockfd, res->ai_addr, res->ai_addrlen);
+  listen(sockfd, BACKLOG);
+
+  struct sockaddr_storage their_addr = {0};
+  socklen_t addr_size = sizeof their_addr;
+  int new_fd = accept(
+    sockfd,
+    (struct sockaddr *)&their_addr,
+    &addr_size
+  );
+  // Ready to communicate on socked descriptor new_fd.
+}
+
+```
