@@ -461,3 +461,60 @@ main(void)
 }
 
 ```
+
+
+## send() and recv() -- Tank to me, baby!
+
+This methods are use with stream sockets, for unconnected datagram sockets, use
+`sendto()` and `recvfrom()`.
+
+```
+  int send(int sockfd, const void * msg, int len, int flags);
+```
+
+`send` returns an integer representing the number of bytes that were actually
+sent, or `-1` for an error.
+
+```
+  int recv(int sockfd, void * buf, int len, int flags);
+```
+
+`recv` returns an integer representing bytes read into the buffer, 0 for a
+closed connection or -1 for error.
+
+
+## sendto() and recvfrom() -- Talk to me, DGRAM-style
+
+These functions are used with unconnected datagram sockets. Since the socket is
+not connected to a remote host, the destination address needs to be provided.
+```
+  int sendto(
+    int sockfd,
+    const void * msg,
+    int len,
+    unsigned int flags,
+    const struct sockaddr * to,
+    socklen_t tolen);
+```
+The same as `send()` but with the `to` and `tolen` added to the parameters,
+where `to` is a pointer to a `struct sockaddr` and `tolen` an int which can be
+set to `sizeof *to`.
+
+```
+  int recvfrom(
+    int sockfd,
+    void * buf,
+    int len,
+    unsigned int flags,
+    struct sockaddr * from,
+    int * fromlen
+  );
+```
+Added parameters, `from` is a pointer to a local `struct sockaddr_storage`
+filled with the IP address and port of the originating machine. `fromlen`
+points to a local int, and will hold the actual length the address after the
+function returns.
+
+Need to use the `*_storage` variant, since a regular `struct sockaddr` is not
+big enough. Also, if `connect()` is used on a datagram socket, `send()` and
+`recv()` can be used as mentioned earlier.
