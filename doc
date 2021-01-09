@@ -1,0 +1,2 @@
+#!/usr/bin/sh
+zathura -d docs/zathura docs/bgnet_a4_c_1.pdf &
