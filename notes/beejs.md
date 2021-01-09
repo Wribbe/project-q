@@ -536,3 +536,10 @@ how   effect
 
 `close` still needed to close the file-descriptor properly after using
 `shutdown`.
+
+
+## getpeername() -- Who are you?
+```
+#include <sys/socket.h>
+int getpeername(int sockfd, struct socaddr * addr, int * addrlen);
+```
