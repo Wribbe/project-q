@@ -518,3 +518,21 @@ function returns.
 Need to use the `*_storage` variant, since a regular `struct sockaddr` is not
 big enough. Also, if `connect()` is used on a datagram socket, `send()` and
 `recv()` can be used as mentioned earlier.
+
+
+## close() and shutdown() -- Get out of my face!
+
+Two variants when terminating a connection, `close(sockfd)` and
+`shutdown(sockfd, int how)`. The first one terminates the connection and any
+communication attempt will receive an error, with the second providing a few
+methods.
+```
+how   effect
+------------
+ 0      receives dissalowed.
+ 1      sends dissalowed.
+ 2      sends and recieves dissalowed (same as close).
+```
+
+`close` still needed to close the file-descriptor properly after using
+`shutdown`.
